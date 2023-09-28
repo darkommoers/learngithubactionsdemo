@@ -1,0 +1,249 @@
+name: Caddy
+
+on:
+  push:
+    paths:
+      - 'src/caddy/caddy.version'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {goos: windows, goarch: 386}
+          - {goos: windows, goarch: amd64}
+          # - {goos: windows, goarch: arm, goarm: 5}
+          # - {goos: windows, goarch: arm, goarm: 6}
+          # - {goos: windows, goarch: arm, goarm: 7}
+          - {goos: windows, goarch: arm64}
+          - {goos: linux, goarch: 386}
+          - {goos: linux, goarch: amd64}
+          # - {goos: linux, goarch: arm, goarm: 5}
+          - {goos: linux, goarch: arm, goarm: 6}
+          - {goos: linux, goarch: arm, goarm: 7}
+          - {goos: linux, goarch: arm64}
+          # - {goos: linux, goarch: mips64le}
+          - {goos: linux, goarch: ppc64le}
+          - {goos: linux, goarch: riscv64}
+          - {goos: linux, goarch: s390x}
+          # - {goos: darwin, goarch: amd64}
+          # - {goos: darwin, goarch: arm64}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GOOS: ${{ matrix.config.goos }}
+          GOARCH: ${{ matrix.config.goarch }}
+          GOARM: ${{ matrix.config.goarm }}
+        shell: bash
+        run: |
+          echo "GO_VERSION=$(wget -qO- https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | jq -r .[0].version)" >> $GITHUB_ENV
+          echo "GO_VERSION: $(curl -sL https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | jq -r '.[0].version')"
+          echo "ASSET_NAME=$(jq ".[\"$GOOS-$GOARCH$GOARM\"].Generatename" -r < ./src/caddy/target-assetname.json)" >> $GITHUB_ENV
+          echo "ASSET_NAME: $(jq ".\"$GOOS-$GOARCH$GOARM\".Generatename" -r ./src/caddy/target-assetname.json)"
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: Install xcaddy
+        run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+      - name: Build caddy
+        env:
+          GOOS: ${{ matrix.config.goos }}
+          GOARCH: ${{ matrix.config.goarch }}
+          GOARM: ${{ matrix.config.goarm }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p build-tmp; install -d build-tmp
+          # ${GOPATH}/bin/xcaddy build \
+          ~/go/bin/xcaddy build \
+            --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive \
+            --with github.com/mholt/caddy-l4 \
+            --with github.com/mholt/caddy-dynamicdns \
+            --with github.com/mholt/caddy-webdav \
+            --with github.com/caddyserver/cache-handler \
+            --with github.com/caddyserver/nginx-adapter \
+            --with github.com/imgk/caddy-trojan \
+            --with github.com/caddy-dns/cloudflare \
+            --output ./build-tmp/caddy
+
+      - name: Rename for Windows 
+        if: matrix.config.goos == 'windows'
+        run: |
+          mv ./build-tmp/caddy ./build-tmp/caddy.exe
+
+      - name: Generate Hash
+        run: |
+          cd ./build-tmp || exit 1
+          # sha256sum * > sha256sum.txt
+          openssl sha256 * > sha256sum.txt
+          cat sha256sum.txt
+          # cat sha256sum.txt | cut -d' ' -f2
+
+      - name: Generate zip for Windows
+        if: matrix.config.goos == 'windows'
+        run: |
+          mkdir -p release-ready; install -d release-ready
+          cd ./build-tmp
+          zip -9vr ../release-ready/caddy-${{ env.ASSET_NAME }}.zip *
+          echo "Generate: caddy-${{ env.ASSET_NAME }}.zip"
+
+      - name: Generate tar for other platform
+        if: matrix.config.goos != 'windows'
+        run: |
+          mkdir -p release-ready; install -d release-ready
+          cd ./build-tmp
+          tar -zcvf ../release-ready/caddy-${{ env.ASSET_NAME }}.tar.gz *
+          echo "Generate: caddy-${{ env.ASSET_NAME }}.tar.gz"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: caddy-${{ env.ASSET_NAME }}
+          path: ./release-ready/*
+          # retention-days: 5
+
+  push:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
+        shell: bash
+        run: |
+          echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION1=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+
+      - run: mkdir -p path/to/artifact; install -d path/to/artifact
+      - run: mkdir -p path/to/ready; install -d path/to/ready
+      - name: Download Artifact
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          path: path/to/artifact
+
+      - name: Ready Upload files
+        run: |
+          for i in path/to/artifact/*/*; do echo "Copy ${i} to path/to/ready"; cp -fr ${i} path/to/ready; done
+          ls -lhR path/to/ready
+
+      - name: Delete old release
+        env:
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+        run: |
+          TARGET_TAG="caddy"
+          # https://docs.github.com/en/rest/git/refs#get-a-reference
+          TARGET_HTTP_CODE=$(curl -sI -w '%{http_code}'"\n" -o '/dev/null' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/${{ github.repository }}/git/ref/tags/${TARGET_TAG} )
+
+          # https://docs.github.com/en/rest/releases/releases#get-a-release-by-tag-name
+          # TARGET_HTTP_CODE=$(curl -sI -w '%{http_code}'"\n" -o '/dev/null' \
+          #   -H "Authorization: Bearer ${GH_TOKEN}" \
+          #   https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
+
+          if [[ ${TARGET_HTTP_CODE} != 200 ]]; then
+          # if [[ "$TARGET_HTTP_CODE" -ne 200 ]]; then
+            # echo "Fail: ${TARGET_HTTP_CODE}"
+            # echo "No target tag or release found, skip delete."
+            echo -e "\033[1;40;96m$(date '+%F %T') === Fail: \033[0m\e[7;47;94m${TARGET_HTTP_CODE}\e[0m"
+            echo -e "\033[1;40;91m$(date '+%F %T') === No target tag or release found, skip delete. \033[0m"
+          else
+            # echo "Success: ${TARGET_HTTP_CODE}"
+            echo -e "\033[1;40;92m$(date '+%F %T') === Success: \033[0m\e[7;47;96m${TARGET_HTTP_CODE}\e[0m"
+            # gh release delete "${TARGET_TAG}" -y --cleanup-tag
+            gh release delete "${TARGET_TAG}" --yes --cleanup-tag
+            # echo "Target tag or release ${TARGET_TAG} deleted Complete!"
+            echo -e "\033[1;40;94m$(date '+%F %T') === Target tag or release \e[7;47;96m${TARGET_TAG}\e[0m\033[1;40;94m deleted Complete! \033[0m"
+          fi
+
+      - name: Upload to GitHub Release for all platform
+        uses: ncipollo/release-action@v1
+        with:
+          name: Rolling Release
+          tag: caddy
+          body: These are automatically updated builds of the latest commit.
+          artifacts: "path/to/ready/*"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # token: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Get Dockerfile
+        run: |
+          cp -fr src/caddy/* $PWD
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # - name: Login to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     username: ${{ github.repository_owner }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          provenance: false
+          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
+          push: true
+          # target: final
+          # tags: |
+          #   ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest
+          #   ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }}
+          #   ghcr.io/${{ github.actor }}/caddy:latest
+          #   ghcr.io/${{ github.repository_owner }}/caddy:${{ env.CADDY_VERSION }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }}
+
+  test:
+    needs: [build,push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
+        shell: bash
+        run: |
+          # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+
+      - name: Test push Docker image
+        run: |
+          docker run --rm --privileged ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest caddy version
+          docker run --rm --privileged ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }} caddy version
+          # docker run --rm --privileged ghcr.io/${{ github.actor }}/caddy:latest caddy version
+          # docker run --rm --privileged ghcr.io/${{ github.repository_owner }}/caddy:${{ env.CADDY_VERSION }} caddy version
