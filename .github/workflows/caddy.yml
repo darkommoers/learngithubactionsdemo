@@ -188,7 +188,7 @@ jobs:
             curl -sL \
               -X DELETE \
               -H "Authorization: Bearer ${GH_TOKEN}" \
-              https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG}
+              https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG} &>/dev/null
             fi
 
             if [[ ${TARGET_HTTP_CODE_TAG} == 404 && ${TARGET_HTTP_CODE_RELEASE} == 404 ]] &>/dev/null; then
