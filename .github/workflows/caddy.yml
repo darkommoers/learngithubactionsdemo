@@ -184,6 +184,13 @@ jobs:
               -H "Authorization: Bearer ${GH_TOKEN}" \
               https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
 
+            if [[ ${TARGET_HTTP_CODE_TAG} == 200 ]] &>/dev/null; then
+            curl -sL \
+              -X DELETE \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG}
+            fi
+
             if [[ ${TARGET_HTTP_CODE_TAG} == 404 && ${TARGET_HTTP_CODE_RELEASE} == 404 ]] &>/dev/null; then
             echo -e "\e[30;48;5;14m$(date '+%F %T') === release is no exist ready to upload\e[0m"
             break 49
