@@ -96,7 +96,7 @@ jobs:
         run: |
           try { Remove-Item alias:curl -Force -Recurse *>$null }
           catch { Write-Host $_ *>$null }
-          $TARGET_TAG="caddy"
+          $TARGET_TAG="haproxy"
           # https://docs.github.com/en/rest/git/refs#get-a-reference
           $TARGET_HTTP_CODE=$(curl -sI -w "%{http_code}" -o "nul" `
             -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
@@ -132,6 +132,12 @@ jobs:
                     -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
                     https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
               
+                  if ( ${TARGET_HTTP_CODE_TAG} -eq 200 ) {
+                      curl -sL `
+                        -X DELETE `
+                        -H "Authorization: Bearer ${GH_TOKEN}" `
+                        https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG}
+                  }
                   if ( ${TARGET_HTTP_CODE_TAG} -eq 404 -and ${TARGET_HTTP_CODE_RELEASE} -eq 404 ) {
                       "$((Get-Date -UFormat "%F %T")) === release is no exist ready to upload"
                       break
