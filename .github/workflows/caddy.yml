@@ -127,8 +127,8 @@ jobs:
           CONTENT_PATH: "src/caddy/caddy.version"
         shell: bash
         run: |
-          echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
-          echo "CADDY_VERSION1=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+          # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
 
       - run: mkdir -p path/to/artifact; install -d path/to/artifact
       - run: mkdir -p path/to/ready; install -d path/to/ready
