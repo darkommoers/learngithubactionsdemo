@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Test Automatic check and push version
+      - name: Test Caddy Automatic check and push version
         env:
           # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
@@ -20,8 +20,10 @@ jobs:
         with:
           github-token: ${{ env.GH_TOKEN }}
           script: |
-            let current_caddy;
-            let latest_caddy;
+            let target_name = "Caddy";
+            let target_url = "https://api.github.com/repos/caddyserver/caddy/releases";
+            let current_version;
+            let latest_version;
             let arrdate = () => {
               let date = new Date();
               let curTime = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()} ${date.getHours().toString().padStart(2,"0")}:${date.getMinutes().toString().padStart(2,"0")}:${date.getSeconds().toString().padStart(2,"0")} ${date.getDay()}`;
@@ -40,35 +42,38 @@ jobs:
           
             // await fetch(`https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }}`, {headers: {"Authorization": `Bearer ${{ env.GH_TOKEN }}`}})
             // .then(response => response.json())
-            // .then(data => {current_caddy = data});
+            // .then(data => {current_version = data});
           
-            await fetch('https://api.github.com/repos/caddyserver/caddy/releases')
+            await fetch(`${target_url}`, {headers: {"Authorization": `Bearer ${{ env.GH_TOKEN }}`}})
             .then(response => response.json())
-            .then(data => {latest_caddy = data});
+            .then(data => {latest_version = data});
           
-            current_caddy = atob(result_sha.data.content).replace(/[\r\n]/g,"");
+            current_version = atob(result_sha.data.content).replace(/[\r\n]/g,"");
           
-            // current_caddy = atob(current_caddy.content).replace(/[\r\n]/g,"");
-            latest_caddy = latest_caddy[0].tag_name;
+            // current_version = atob(current_version.content).replace(/[\r\n]/g,"");
+            // List repository tags use
+            // latest_version = latest_version[0].name;
+            // List releases use
+            latest_version = latest_version[0].tag_name;
           
-            console.log(arrdate(),`Current version: ${current_caddy}`);
-            console.log(arrdate(),`Latest version: ${latest_caddy}`);
+            console.log(arrdate(),`Current ${target_name} version: ${current_version}`);
+            console.log(arrdate(),`Latest ${target_name} version: ${latest_version}`);
           
-            if (`${current_caddy}` != `${latest_caddy}`) {
-              console.log(arrdate(),`Current version: ${current_caddy}, Latest version: ${latest_caddy}, Start Getting......`);
+            if (`${current_version}` != `${latest_version}`) {
+              console.log(arrdate(),`Current version: ${current_version}, Latest version: ${latest_version}, Start Getting......`);
           
               let result = await github.rest.repos.createOrUpdateFileContents({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 path: `${{ env.CONTENT_PATH }}`,
-                message: `Update to ${latest_caddy}`,
+                message: `Update to ${latest_version}`,
                 sha: `${result_sha.data.sha}`,
-                content: btoa(`${latest_caddy}`)
+                content: btoa(`${latest_version}`)
               })
               // console.log(arrdate(),result);
               console.log(arrdate(),result.data.commit.message);
           
-              console.log(arrdate(),`Get caddy latest version Complete.`);
+              console.log(arrdate(),`Get ${target_name} latest version Complete.`);
             } else {
-              console.log(arrdate(),`Current version: ${current_caddy}, Latest version: ${latest_caddy}, No need to get.`);
+              console.log(arrdate(),`Current version: ${current_version}, Latest version: ${latest_version}, No need to get.`);
             }
