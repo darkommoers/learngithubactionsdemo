@@ -13,7 +13,7 @@ RUN set -ex \
 	&& install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
 	&& wget -O /etc/caddy/Caddyfile "https://raw.githubusercontent.com/caddyserver/dist/master/config/Caddyfile" \
 	&& wget -O /usr/share/caddy/index.html "https://raw.githubusercontent.com/caddyserver/dist/master/welcome/index.html" \
-	&& apk add --no-cache ca-certificates libcap mailcap \
+	&& apk add --no-cache ca-certificates libcap mailcap aria2 \
 	&& /root/caddy.sh "${TARGETPLATFORM}" \
 	&& rm -rfv /root/caddy.sh \
 	&& rm -rfv /var/cache/apk/*
