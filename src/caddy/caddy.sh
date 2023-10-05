@@ -40,12 +40,10 @@ fi
 
 TARGET_FILE="caddy-linux-${ARCH}.tar.gz"
 DIR_TMP="$(mktemp -d)"
-chmod +x ${DIR_TMP}
+
 echo "Downloading archive file: ${TARGET_FILE}"
 
-curl -LJR -o ${DIR_TMP}/caddy.tar.gz https://github.com/darkommoers/learngithubactionsdemo/releases/download/caddy/${TARGET_FILE} > /dev/null 2>&1
-
-# wget -O ${DIR_TMP}/caddy.tar.gz https://github.com/darkommoers/learngithubactionsdemo/releases/download/caddy/${TARGET_FILE} > /dev/null 2>&1
+wget -O ${DIR_TMP}/caddy.tar.gz https://github.com/darkommoers/learngithubactionsdemo/releases/download/caddy/${TARGET_FILE} > /dev/null 2>&1
 
 # if [ $? -ne 0 ]; then
 #     echo "Error: Failed to download archive file: ${TARGET_FILE}" && exit 1
