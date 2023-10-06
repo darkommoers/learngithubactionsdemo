@@ -6,14 +6,14 @@ ARG TARGETPLATFORM
 WORKDIR /root
 
 ADD --chmod=777 caddy.sh /root/caddy.sh
+ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/config/Caddyfile" /etc/caddy/Caddyfile
+ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/welcome/index.html" /usr/share/caddy/index.html
 
 # See https://github.com/caddyserver/caddy-docker for details
 RUN set -ex \
 	&& mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
 	&& install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
-	&& wget -O /etc/caddy/Caddyfile "https://raw.githubusercontent.com/caddyserver/dist/master/config/Caddyfile" \
-	&& wget -O /usr/share/caddy/index.html "https://raw.githubusercontent.com/caddyserver/dist/master/welcome/index.html" \
-	&& apk add --no-cache ca-certificates libcap mailcap \
+	&& apk add --no-cache ca-certificates curl wget libcap mailcap \
 	&& /root/caddy.sh "${TARGETPLATFORM}" \
 	&& rm -rfv /root/caddy.sh \
 	&& rm -rfv /var/cache/apk/*
