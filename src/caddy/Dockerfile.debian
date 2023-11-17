@@ -1,0 +1,60 @@
+FROM --platform=${TARGETPLATFORM} debian:stable-slim AS ready
+# FROM --platform=${TARGETPLATFORM} debian:sid-slim AS ready
+
+ARG TARGETPLATFORM
+
+WORKDIR /root
+
+ADD --chmod=777 caddy.sh /root/caddy.sh
+ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/config/Caddyfile" /etc/caddy/Caddyfile
+ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/welcome/index.html" /usr/share/caddy/index.html
+
+# See https://github.com/caddyserver/caddy-docker for details
+RUN set -ex \
+	&& mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
+	&& install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
+	&& apt-get update \
+	&& apt-get upgrade -y \
+	&& apt-get install -y --no-install-recommends ca-certificates curl wget libcap2-bin mailcap \
+	&& /root/caddy.sh "${TARGETPLATFORM}" \
+	&& rm -rfv /root/caddy.sh \
+	&& apt-get remove --purge --auto-remove -y \
+	&& apt-get purge -y --auto-remove \
+	&& apt-get autoremove -y \
+	&& apt-get autoclean -y \
+	&& apt-get clean -y \
+	&& rm -rfv /var/lib/apt/lists/*
+
+FROM --platform=${TARGETPLATFORM} debian:stable-slim AS final
+# FROM --platform=${TARGETPLATFORM} debian:sid-slim AS final
+
+COPY --from=ready /etc/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=ready /usr/share/caddy/index.html /usr/share/caddy/index.html
+COPY --from=ready --chmod=755 /usr/bin/caddy /usr/bin/caddy
+
+RUN set -eux; \
+	mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
+	install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
+	apt-get update; \
+	apt-get upgrade -y; \
+	apt-get install -y --no-install-recommends bash ca-certificates tzdata; \
+	apt-get remove --purge --auto-remove -y; \
+	apt-get purge -y --auto-remove; \
+	apt-get autoremove -y; \
+	apt-get autoclean -y; \
+	apt-get clean -y; \
+	rm -rfv /var/lib/apt/lists/*
+
+# See https://caddyserver.com/docs/conventions#file-locations for details
+ENV XDG_CONFIG_HOME /config
+ENV XDG_DATA_HOME /data
+
+EXPOSE 80
+EXPOSE 443
+EXPOSE 443/udp
+EXPOSE 2019
+
+WORKDIR /srv
+
+# CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--environ"]
