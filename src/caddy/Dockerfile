@@ -1,5 +1,5 @@
-FROM --platform=${BUILDPLATFORM} alpine:latest AS ready
-# FROM --platform=${BUILDPLATFORM} alpine:edge AS ready
+FROM --platform=${TARGETPLATFORM} alpine:latest AS ready
+# FROM --platform=${TARGETPLATFORM} alpine:edge AS ready
 
 ARG TARGETPLATFORM
 
@@ -29,7 +29,7 @@ RUN set -eux; \
 	mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
 	install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
 	apk -U upgrade; \
-	apk add --no-cache bash ca-certificates tzdata libcap mailcap; \
+	apk add --no-cache bash ca-certificates tzdata curl libcap mailcap; \
 	rm -rfv /var/cache/apk/*
 
 # See https://caddyserver.com/docs/conventions#file-locations for details
