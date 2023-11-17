@@ -13,6 +13,9 @@ else
         linux/amd64)
             ARCH="amd64"
             ;;
+        linux/arm/v5)
+            ARCH="arm5"
+            ;;
         linux/arm/v6)
             ARCH="arm6"
             ;;
@@ -21,6 +24,9 @@ else
             ;;
         linux/arm64|linux/arm64/v8)
             ARCH="arm64"
+            ;;
+        linux/mips64le)
+            ARCH="mips64le"
             ;;
         linux/ppc64le)
             ARCH="ppc64le"
