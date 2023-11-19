@@ -166,6 +166,7 @@ jobs:
                   }
                   if ( ${TARGET_HTTP_CODE_TAG} -eq 404 -and ${TARGET_HTTP_CODE_RELEASE} -eq 404 ) {
                       "$(Get-Date -Format $Date_Format) === release is no exist ready to upload"
+                      Start-Sleep -Seconds 1
                       break
                   }else {
                       "$(Get-Date -Format $Date_Format) === release exist retrying"
@@ -182,8 +183,8 @@ jobs:
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
           Get-ChildItem
-          #gh release create haproxy .\path\to\release\* -t "Haproxy Rolling Release" -n "These are automatically updated builds of the latest commit."
-          gh release create haproxy $((Get-Item . -Force).FullName)\path\to\release\* --title "Haproxy Rolling Release" --notes "These are automatically updated builds of the latest commit."
+          # gh release create haproxy (Get-Item .\path\to\release\*) -t "Haproxy Rolling Release" -n "These are automatically updated builds of the latest commit."
+          gh release create haproxy (Get-ChildItem .\path\to\release\*) --title "Haproxy Rolling Release" --notes "These are automatically updated builds of the latest commit."
 
       # - name: Upload to GitHub Release for all platform
       #   env:
