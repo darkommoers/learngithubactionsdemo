@@ -3,8 +3,11 @@ name: Caddy
 on:
   push:
     paths:
-      - 'src/caddy/caddy.version'
+      - "src/caddy/caddy.version"
   workflow_dispatch:
+
+env:
+  REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/caddy
 
 jobs:
   build:
@@ -13,22 +16,22 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {goos: windows, goarch: 386}
-          - {goos: windows, goarch: amd64}
+          - { goos: windows, goarch: 386 }
+          - { goos: windows, goarch: amd64 }
           # - {goos: windows, goarch: arm, goarm: 5}
           # - {goos: windows, goarch: arm, goarm: 6}
           # - {goos: windows, goarch: arm, goarm: 7}
-          - {goos: windows, goarch: arm64}
-          - {goos: linux, goarch: 386}
-          - {goos: linux, goarch: amd64}
-          # - {goos: linux, goarch: arm, goarm: 5}
-          - {goos: linux, goarch: arm, goarm: 6}
-          - {goos: linux, goarch: arm, goarm: 7}
-          - {goos: linux, goarch: arm64}
-          # - {goos: linux, goarch: mips64le}
-          - {goos: linux, goarch: ppc64le}
-          - {goos: linux, goarch: riscv64}
-          - {goos: linux, goarch: s390x}
+          - { goos: windows, goarch: arm64 }
+          - { goos: linux, goarch: 386 }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm, goarm: 5 }
+          - { goos: linux, goarch: arm, goarm: 6 }
+          - { goos: linux, goarch: arm, goarm: 7 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: linux, goarch: mips64le }
+          - { goos: linux, goarch: ppc64le }
+          - { goos: linux, goarch: riscv64 }
+          - { goos: linux, goarch: s390x }
           # - {goos: darwin, goarch: amd64}
           # - {goos: darwin, goarch: arm64}
 
@@ -38,10 +41,12 @@ jobs:
 
       - name: Setup Variables
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
           GOOS: ${{ matrix.config.goos }}
           GOARCH: ${{ matrix.config.goarch }}
           GOARM: ${{ matrix.config.goarm }}
-        shell: bash
         run: |
           echo "GO_VERSION=$(wget -qO- https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | jq -r .[0].version)" >> $GITHUB_ENV
           echo "GO_VERSION: $(curl -sL https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | jq -r '.[0].version')"
@@ -77,7 +82,7 @@ jobs:
             --with github.com/caddy-dns/cloudflare \
             --output ./build-tmp/caddy
 
-      - name: Rename for Windows 
+      - name: Rename for Windows
         if: matrix.config.goos == 'windows'
         run: |
           mv ./build-tmp/caddy ./build-tmp/caddy.exe
@@ -113,8 +118,9 @@ jobs:
           path: ./release-ready/*
           # retention-days: 5
 
-  push:
-    needs: build
+  push-releases:
+    needs:
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -125,7 +131,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           CONTENT_PATH: "src/caddy/caddy.version"
-        shell: bash
         run: |
           # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
           echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
@@ -145,8 +150,8 @@ jobs:
 
       - name: Delete old release
         env:
-          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
           TARGET_TAG="caddy"
           # https://docs.github.com/en/rest/git/refs#get-a-reference
@@ -179,7 +184,7 @@ jobs:
             TARGET_HTTP_CODE_TAG=$(curl -sI -w "%{http_code}" -o "/dev/null" \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               https://api.github.com/repos/${{ github.repository }}/git/ref/tags/${TARGET_TAG} )
-  
+
             TARGET_HTTP_CODE_RELEASE=$(curl -sI -w "%{http_code}" -o "/dev/null" \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
@@ -215,9 +220,49 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           # token: ${{ secrets.MY_GITHUB_TOKEN }}
 
+  push-alpine:
+    needs:
+      - build
+      - push-releases
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/386
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm64/v8
+          - linux/ppc64le
+          # - linux/riscv64
+          - linux/s390x
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
+        run: |
+          # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+
       - name: Get Dockerfile
         run: |
           cp -fr src/caddy/* $PWD
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,enable=true,value=alpine
+            type=raw,enable=true,value=alpine-${{ env.CADDY_VERSION }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -229,33 +274,220 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          provenance: false
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests; install -d /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v3
+        with:
+          name: digests-alpine
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  push-debian:
+    needs:
+      - build
+      - push-releases
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/386
+          - linux/amd64
+          - linux/arm/v5
+          - linux/arm/v7
+          - linux/arm64/v8
+          - linux/mips64le
+          - linux/ppc64le
+          # - linux/riscv64
+          - linux/s390x
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
+        run: |
+          # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+
+      - name: Get Dockerfile
+        run: |
+          cp -fr src/caddy/* $PWD
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,enable=true,value=latest
+            type=raw,enable=true,value=debian
+            type=raw,enable=true,value=debian-${{ env.CADDY_VERSION }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.debian
+          provenance: false
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests; install -d /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v3
+        with:
+          name: digests-debian
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merges:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - push-releases
+      - push-alpine
+      - push-debian
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Variables
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
+        run: |
+          # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       # - name: Login to GitHub Container Registry
       #   uses: docker/login-action@v3
       #   with:
       #     registry: ghcr.io
-      #     username: ${{ github.actor }}
+      #     # username: ${{ github.actor }}
       #     username: ${{ github.repository_owner }}
       #     password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
+      - name: Docker meta alpine
+        id: meta-alpine
+        uses: docker/metadata-action@v5
         with:
-          context: .
-          provenance: false
-          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-          push: true
-          # target: final
-          # tags: |
-          #   ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest
-          #   ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }}
-          #   ghcr.io/${{ github.actor }}/caddy:latest
-          #   ghcr.io/${{ github.repository_owner }}/caddy:${{ env.CADDY_VERSION }}
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }}
+            type=raw,enable=true,value=alpine
+            type=raw,enable=true,value=alpine-${{ env.CADDY_VERSION }}
+
+      - name: Download digests alpine
+        uses: actions/download-artifact@v3
+        with:
+          name: digests-alpine
+          path: /tmp/digests-alpine
+      - name: Create manifest list and push alpine
+        working-directory: /tmp/digests-alpine
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+      # - name: Inspect images alpine
+      #   run: |
+      #     for i in $(echo $DOCKER_METADATA_OUTPUT_TAGS | xargs); do
+      #       echo "Inspect image: $i"
+      #       docker buildx imagetools inspect $i
+      #     done
+
+      # - name: Push image to GHCR alpine
+      #   run: |
+      #     docker buildx imagetools create \
+      #       -t ghcr.io/${{ github.actor }}/caddy:alpine \
+      #       --tag ghcr.io/${{ github.repository_owner }}/caddy:alpine-${{ env.CADDY_VERSION }} \
+      #       ${{ secrets.DOCKERHUB_USERNAME }}/caddy:alpine
+
+      - name: Docker meta debian
+        id: meta-debian
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,enable=true,value=latest
+            type=raw,enable=true,value=debian
+            type=raw,enable=true,value=debian-${{ env.CADDY_VERSION }}
+
+      - name: Download digests debian
+        uses: actions/download-artifact@v3
+        with:
+          name: digests-debian
+          path: /tmp/digests-debian
+      - name: Create manifest list and push debian
+        working-directory: /tmp/digests-debian
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+      # - name: Inspect images debian
+      #   run: |
+      #     for i in $(echo $DOCKER_METADATA_OUTPUT_TAGS | xargs); do
+      #       echo "Inspect image: $i"
+      #       docker buildx imagetools inspect $i
+      #     done
+
+      # - name: Push image to GHCR debian
+      #   run: |
+      #     docker buildx imagetools create \
+      #       -t ghcr.io/${{ github.actor }}/caddy:latest \
+      #       -t ghcr.io/${{ github.actor }}/caddy:debian \
+      #       --tag ghcr.io/${{ github.repository_owner }}/caddy:debian-${{ env.CADDY_VERSION }} \
+      #       ${{ secrets.DOCKERHUB_USERNAME }}/caddy:debian
 
   test:
-    needs: [build,push]
+    needs:
+      - build
+      - push-releases
+      - push-alpine
+      - push-debian
+      - merges
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -266,14 +498,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           CONTENT_PATH: "src/caddy/caddy.version"
-        shell: bash
         run: |
           # echo "CADDY_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
           echo "CADDY_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
 
-      - name: Test push Docker image
+      - name: Test push Docker images
         run: |
-          docker run --rm --privileged ${{ secrets.DOCKERHUB_USERNAME }}/caddy:latest caddy version
-          docker run --rm --privileged ${{ secrets.DOCKERHUB_USERNAME }}/caddy:${{ env.CADDY_VERSION }} caddy version
-          # docker run --rm --privileged ghcr.io/${{ github.actor }}/caddy:latest caddy version
-          # docker run --rm --privileged ghcr.io/${{ github.repository_owner }}/caddy:${{ env.CADDY_VERSION }} caddy version
+          docker run --rm --privileged --entrypoint "" ${{ secrets.DOCKERHUB_USERNAME }}/caddy:alpine caddy version
+          docker run --rm --privileged --entrypoint "" ${{ secrets.DOCKERHUB_USERNAME }}/caddy:debian caddy version
+          # docker run --rm --privileged --entrypoint "/usr/bin/caddy" ${{ secrets.DOCKERHUB_USERNAME }}/caddy:alpine version
+          # docker run --rm --privileged --entrypoint "/usr/bin/caddy" ${{ secrets.DOCKERHUB_USERNAME }}/caddy:debian version
