@@ -198,6 +198,7 @@ jobs:
 
             if [[ ${TARGET_HTTP_CODE_TAG} == 404 && ${TARGET_HTTP_CODE_RELEASE} == 404 ]] &>/dev/null; then
             echo -e "\e[30;48;5;14m$(date '+%F %T') === release is no exist ready to upload\e[0m"
+            sleep 1
             break 49
             else
             echo -e "\e[30;48;5;11m$(date '+%F %T') === release exist retrying\e[0m"
@@ -210,15 +211,26 @@ jobs:
           fi
 
       - name: Upload to GitHub Release for all platform
-        uses: ncipollo/release-action@v1
-        with:
-          name: Caddy Rolling Release
-          tag: caddy
-          body: These are automatically updated builds of the latest commit.
-          artifacts: "path/to/ready/*"
-          allowUpdates: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # token: ${{ secrets.MY_GITHUB_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+        run: |
+          # gh release create caddy ./path/to/ready/* -t "Caddy Rolling Release" -n "These are automatically updated builds of the latest commit."
+          gh release create caddy path/to/ready/* --title "Caddy Rolling Release" --notes "These are automatically updated builds of the latest commit."
+
+      # - name: Upload to GitHub Release for all platform
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      #   uses: ncipollo/release-action@v1
+      #   with:
+      #     name: Caddy Rolling Release
+      #     tag: caddy
+      #     body: These are automatically updated builds of the latest commit.
+      #     artifacts: "path/to/ready/*"
+      #     allowUpdates: true
+      #     # token: ${{ secrets.GITHUB_TOKEN }}
+      #     # token: ${{ secrets.MY_GITHUB_TOKEN }}
 
   push-alpine:
     needs:
