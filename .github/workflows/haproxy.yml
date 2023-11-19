@@ -182,7 +182,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
-          Get-ChildItem
           # gh release create haproxy (Get-Item .\path\to\release\*) -t "Haproxy Rolling Release" -n "These are automatically updated builds of the latest commit."
           gh release create haproxy (Get-ChildItem .\path\to\release\*) --title "Haproxy Rolling Release" --notes "These are automatically updated builds of the latest commit."
 
