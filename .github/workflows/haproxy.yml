@@ -3,7 +3,7 @@ name: Haproxy
 on:
   push:
     paths:
-      - 'src/haproxy/haproxy.version'
+      - "src/haproxy/haproxy.version"
   workflow_dispatch:
 
 jobs:
@@ -94,6 +94,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
+          $Date_Format = "yyyy-MM-dd HH:mm:ss"
           try { Remove-Item alias:curl -Force -Recurse *>$null }
           catch { Write-Host $_ *>$null }
           $TARGET_TAG="haproxy"
@@ -110,28 +111,53 @@ jobs:
           if ( ${TARGET_HTTP_CODE} -ne 200 ){
               # echo "Fail: ${TARGET_HTTP_CODE}"
               # echo "No target tag or release found, skip delete."
-              "$((Get-Date -UFormat "%F %T")) === Fail: ${TARGET_HTTP_CODE}"
-              "$((Get-Date -UFormat "%F %T")) === No target tag or release found, skip delete."
+              "$(Get-Date -Format $Date_Format) === Fail: ${TARGET_HTTP_CODE}"
+              "$(Get-Date -Format $Date_Format) === No target tag or release found, skip delete."
           }else{
               # echo "Success: ${TARGET_HTTP_CODE}"
-              "$((Get-Date -UFormat "%F %T")) === Success: ${TARGET_HTTP_CODE}"
+              "$(Get-Date -Format $Date_Format) === Success: ${TARGET_HTTP_CODE}"
               # gh release delete "${TARGET_TAG}" -y --cleanup-tag
               # gh release delete "${TARGET_TAG}" --yes --cleanup-tag
               try { gh release delete "${TARGET_TAG}" --yes --cleanup-tag }
               catch { Write-Host $_ *>$null }
               # echo "Target tag or release ${TARGET_TAG} deleted Complete!"
+
+              # # while($True){
+              # for (;;){
+              #     "$(Get-Date -Format $Date_Format) === check release exist"
+              #     $TARGET_HTTP_CODE_TAG=$(curl -sI -w "%{http_code}" -o "nul" `
+              #     -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
+              #     https://api.github.com/repos/${{ github.repository }}/git/ref/tags/${TARGET_TAG} )
               
-              # while($True){
-              for (;;){
-                  "$((Get-Date -UFormat "%F %T")) === check release exist"
+              #     $TARGET_HTTP_CODE_RELEASE=$(curl -sI -w "%{http_code}" -o "nul" `
+              #       -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
+              #       https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
+              
+              #     if ( ${TARGET_HTTP_CODE_TAG} -eq 200 ) {
+              #         curl -sL `
+              #           -X DELETE `
+              #           -H "Authorization: Bearer ${GH_TOKEN}" `
+              #           https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG}
+              #     }
+              #     if ( ${TARGET_HTTP_CODE_TAG} -eq 404 -and ${TARGET_HTTP_CODE_RELEASE} -eq 404 ) {
+              #         "$(Get-Date -Format $Date_Format) === release is no exist ready to upload"
+              #         break
+              #     }else {
+              #         "$(Get-Date -Format $Date_Format) === release exist retrying"
+              #     }
+              #     Start-Sleep -Seconds 3
+              # }
+
+              do { 
+                  "$(Get-Date -Format $Date_Format) === check release exist"
                   $TARGET_HTTP_CODE_TAG=$(curl -sI -w "%{http_code}" -o "nul" `
                   -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
                   https://api.github.com/repos/${{ github.repository }}/git/ref/tags/${TARGET_TAG} )
-              
+
                   $TARGET_HTTP_CODE_RELEASE=$(curl -sI -w "%{http_code}" -o "nul" `
                     -H "Authorization: Bearer ${{ env.GH_TOKEN }}" `
                     https://api.github.com/repos/${{ github.repository }}/releases/tags/${TARGET_TAG} )
-              
+
                   if ( ${TARGET_HTTP_CODE_TAG} -eq 200 ) {
                       curl -sL `
                         -X DELETE `
@@ -139,23 +165,35 @@ jobs:
                         https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${TARGET_TAG}
                   }
                   if ( ${TARGET_HTTP_CODE_TAG} -eq 404 -and ${TARGET_HTTP_CODE_RELEASE} -eq 404 ) {
-                      "$((Get-Date -UFormat "%F %T")) === release is no exist ready to upload"
+                      "$(Get-Date -Format $Date_Format) === release is no exist ready to upload"
                       break
                   }else {
-                      "$((Get-Date -UFormat "%F %T")) === release exist retrying"
+                      "$(Get-Date -Format $Date_Format) === release exist retrying"
                   }
                   Start-Sleep -Seconds 3
-              }
-              "$((Get-Date -UFormat "%F %T")) === Target tag or release ${TARGET_TAG} deleted Complete!"
+              } until ((${TARGET_HTTP_CODE_TAG} -eq 404 -and ${TARGET_HTTP_CODE_RELEASE} -eq 404))
+
+              "$(Get-Date -Format $Date_Format) === Target tag or release ${TARGET_TAG} deleted Complete!"
           }
 
       - name: Upload to GitHub Release for all platform
-        uses: ncipollo/release-action@v1
-        with:
-          name: Haproxy Rolling Release
-          tag: haproxy
-          body: These are automatically updated builds of the latest commit.
-          artifacts: "path/to/release/*"
-          allowUpdates: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # token: ${{ secrets.MY_GITHUB_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+        run: |
+          # gh release create haproxy ./path/to/release/* -t "Haproxy Rolling Release" -n "These are automatically updated builds of the latest commit."
+          gh release create haproxy path/to/release/* --title "Haproxy Rolling Release" --notes "These are automatically updated builds of the latest commit."
+
+      # - name: Upload to GitHub Release for all platform
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+      #   uses: ncipollo/release-action@v1
+      #   with:
+      #     name: Haproxy Rolling Release
+      #     tag: haproxy
+      #     body: These are automatically updated builds of the latest commit.
+      #     artifacts: "path/to/release/*"
+      #     allowUpdates: true
+      #     # token: ${{ secrets.GITHUB_TOKEN }}
+      #     # token: ${{ secrets.MY_GITHUB_TOKEN }}
