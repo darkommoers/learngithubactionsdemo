@@ -3,9 +3,7 @@ FROM --platform=${TARGETPLATFORM} alpine:latest AS ready
 
 ARG TARGETPLATFORM
 
-WORKDIR /root
-
-ADD --chmod=777 caddy.sh /root/caddy.sh
+ADD --chmod=777 caddy.sh /usr/local/bin/
 ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/config/Caddyfile" /etc/caddy/Caddyfile
 ADD --chmod=755 "https://raw.githubusercontent.com/caddyserver/dist/master/welcome/index.html" /usr/share/caddy/index.html
 
@@ -14,8 +12,8 @@ RUN set -ex \
 	&& mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
 	&& install -d /config/caddy /data/caddy /etc/caddy /usr/share/caddy \
 	&& apk add --no-cache ca-certificates curl wget libcap mailcap \
-	&& /root/caddy.sh "${TARGETPLATFORM}" \
-	&& rm -rfv /root/caddy.sh \
+	&& caddy.sh "${TARGETPLATFORM}" \
+	&& rm -rfv /usr/local/bin/caddy.sh \
 	&& rm -rfv /var/cache/apk/*
 
 FROM --platform=${TARGETPLATFORM} alpine:latest AS final
