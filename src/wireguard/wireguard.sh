@@ -2,21 +2,43 @@
 #
 set -e
 
-# wg-quick up wg0
-wg-quick up "$@"
+info() {
+  local color='\033[1;32m'
+  local clear='\033[0m'
+  local time=$(date '+%F %T')
+  printf "${color}[${time}] [INFO]: ${clear}%s\n" "$*"
+}
 
-echo "[hit enter key to exit] or run 'docker stop <container>'"
+warn() {
+  local color='\e[1;33m'
+  local clear='\e[0m'
+  local time=$(date '+%Y-%m-%d %T')
+  printf "${color}[${time}] [WARN]: ${clear}%b\n" "$*"
+}
+
+error() {
+  local color='\e[1;31m'
+  local clear='\e[0m'
+  local time=$(date +"%Y-%m-%d %H:%M:%S")
+  echo -e "${color}[${time}] [ERROR]: ${clear}$*"
+}
+
+graceful_stop() {
+  trap '' EXIT
+  warn "graceful stopping wireguard..."
+  wg-quick down "$@"
+  info "graceful stopping wireguard Complete..."
+}
+
+start_wireguard() {
+  trap 'graceful_stop "$@"' INT QUIT TERM
+  # trap "graceful_stop \"$@\"" INT QUIT TERM
+  info "starting wireguard..."
+  trap 'error "starting wireguard Error..."' EXIT
+  wg-quick up "$@"
+  if [ $? -eq 0 ]; then info "starting wireguard Complete..."; fi
+}
+
+start_wireguard "$@"
 # Keep the script running to keep the container alive
-# tail -f /dev/null
-# while true; do sleep 1; done
-# until false; do sleep 1; done
-# sleep infinity
-# read REPLY
-exec /bin/sh -c "trap : TERM INT; read REPLY"
-# exec /bin/bash -c "trap - TERM INT; read REPLY"
-# exec /bin/sh -c "trap : TERM INT; sleep infinity & wait"
-# exec /bin/bash -c "trap - TERM INT; sleep infinity & wait"
-# exec /bin/sh -c "trap : TERM INT; (while true; do sleep 1024; done) & wait"
-# exec /bin/bash -c "trap - TERM INT; (until false; do sleep 1024; done) & wait"
-# /usr/bin/env sh
-# /usr/bin/env bash
+read REPLY
