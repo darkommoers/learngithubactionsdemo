@@ -13,14 +13,14 @@ warn() {
   local color='\e[1;33m'
   local clear='\e[0m'
   local time=$(date '+%Y-%m-%d %T')
-  printf "${color}[${time}] [WARN]: ${clear}%b\n" "$*"
+  printf "${color}[${time}] [WARN]: ${clear}%s\n" "$*"
 }
 
 error() {
   local color='\e[1;31m'
   local clear='\e[0m'
   local time=$(date +"%Y-%m-%d %H:%M:%S")
-  echo -e "${color}[${time}] [ERROR]: ${clear}$*"
+  printf "${color}[${time}] [ERROR]: ${clear}%s\n" "$*"
 }
 
 graceful_stop() {
