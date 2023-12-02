@@ -31,8 +31,8 @@ graceful_stop() {
 }
 
 start_wireguard() {
-  trap 'graceful_stop "$@"' INT QUIT TERM
-  # trap "graceful_stop \"$@\"" INT QUIT TERM
+  trap 'graceful_stop "$@"' INT QUIT TERM KILL
+  # trap "graceful_stop \"$@\"" INT QUIT TERM KILL
   info "starting wireguard..."
   trap 'error "starting wireguard Error..."' EXIT
   wg-quick up "$@"
