@@ -54,7 +54,7 @@ jobs:
           echo "ASSET_NAME: $(jq ".\"$GOOS-$GOARCH$GOARM\".Generatename" -r ./src/caddy/target-assetname.json)"
 
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
