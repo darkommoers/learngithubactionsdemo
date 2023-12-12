@@ -214,9 +214,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          CONTENT_PATH: "src/caddy/caddy.version"
         run: |
-          # gh release create caddy ./path/to/ready/* -t "Caddy Rolling Release" -n "These are automatically updated builds of the latest commit."
-          gh release create caddy path/to/ready/* --title "Caddy Rolling Release" --notes "These are automatically updated builds of the latest commit."
+          TARGET_TAG="caddy"
+          TARGET_VERSION=$(cat ${{ env.CONTENT_PATH }})
+          gh release create "${TARGET_TAG}" path/to/ready/* --title "Caddy Rolling Release" \
+          --notes "Caddy Version: <code>[${TARGET_VERSION}](https://github.com/caddyserver/caddy/releases/tag/${TARGET_VERSION})</code><br><br>**These are automatically updated builds of the latest commit.**"
 
       # - name: Upload to GitHub Release for all platform
       #   env:
