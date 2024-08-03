@@ -26,6 +26,12 @@ jobs:
           # - { name: Linux arm6, goos: linux, goarch: arm, goarm: 6 }
           # - { name: Linux arm7, goos: linux, goarch: arm, goarm: 7 }
           - { name: Linux arm64, goos: linux, goarch: arm64 }
+          - { name: Freebsd x86, goos: freebsd, goarch: 386 }
+          - { name: Freebsd x86_64, goos: freebsd, goarch: amd64 }
+          # - { name: Freebsd arm5, goos: freebsd, goarch: arm, goarm: 5 }
+          # - { name: Freebsd arm6, goos: freebsd, goarch: arm, goarm: 6 }
+          # - { name: Freebsd arm7, goos: freebsd, goarch: arm, goarm: 7 }
+          - { name: Freebsd arm64, goos: freebsd, goarch: arm64 }
     steps:
       - name: Checkout self
         uses: actions/checkout@v4
