@@ -81,8 +81,8 @@ jobs:
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
           echo "-s -w -X main.Version=${TARGET_VERSION} -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')"
-          # go build -v -o ../build-tmp/${{ env.CONTENT_TARGET }} ./cmd/cloudflared
-          go build -v -o ../build-tmp/${{ env.CONTENT_TARGET }} -ldflags "-X main.Version=${TARGET_VERSION} -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')" ./cmd/cloudflared
+          # go build -v -o ../build-tmp/${{ env.CONTENT_TARGET }} ./cmd/${{ env.CONTENT_TARGET }}
+          make cloudflared
 
       - name: Generate zip for Windows
         if: matrix.config.goos == 'windows'
