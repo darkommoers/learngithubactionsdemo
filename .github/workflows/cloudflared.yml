@@ -80,9 +80,10 @@ jobs:
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          make
-          # make cloudflared
+          GO111MODULE=on
+          make cloudflared
           ls -al
+          cp -fr cloudflared ../build-tmp/${{ env.CONTENT_TARGET }}
           go env
 
       - name: Generate zip for Windows
