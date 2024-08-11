@@ -26,6 +26,8 @@ jobs:
           # - { name: Linux arm6, goos: linux, goarch: arm, goarm: 6 }
           # - { name: Linux arm7, goos: linux, goarch: arm, goarm: 7 }
           - { name: Linux arm64, goos: linux, goarch: arm64 }
+          - { name: Darwin x86_64, goos: darwin, goarch: amd64 }
+          - { name: Darwin arm64, goos: darwin, goarch: arm64 }
           - { name: Freebsd x86, goos: freebsd, goarch: 386 }
           - { name: Freebsd x86_64, goos: freebsd, goarch: amd64 }
           # - { name: Freebsd arm5, goos: freebsd, goarch: arm, goarm: 5 }
@@ -119,10 +121,11 @@ jobs:
           ls -lhR $current_path/path/to/ready
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: chisel-${{ env.ASSET_NAME }}
           path: ./path/to/ready/*
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
           # retention-days: 5
 
   push-releases:
@@ -144,15 +147,21 @@ jobs:
 
       - run: mkdir -p path/to/artifact; install -d path/to/artifact
       - run: mkdir -p path/to/ready; install -d path/to/ready
-      - name: Download Artifact
-        id: download
-        uses: actions/download-artifact@v3
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
         with:
           path: path/to/artifact
+          # pattern: chisel-*
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -lhR path/to/artifact
 
       - name: Ready Upload files
         run: |
-          for i in path/to/artifact/*/*; do echo "Copy ${i} to path/to/ready"; cp -fr ${i} path/to/ready; done
+          for i in path/to/artifact/*; do echo "Copy ${i} to path/to/ready"; cp -fr ${i} path/to/ready; done
+          # for i in path/to/artifact/*/*; do echo "Copy ${i} to path/to/ready"; cp -fr ${i} path/to/ready; done
           ls -lhR path/to/ready
 
       - name: Delete old release
