@@ -79,8 +79,10 @@ jobs:
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          echo "-s -w -X main.Version=$(cat "${{ env.CONTENT_VERSION }}" | head -n1) -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')"
-          go build -v -o ../build-tmp/${{ env.CONTENT_TARGET }} -mod=vendor -trimpath -ldflags "-s -w -X main.Version=$(cat "${{ env.CONTENT_VERSION }}" | head -n1) -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')" ./cmd/${{ env.CONTENT_TARGET }}
+          TARGET_VERSION=$(cat "${{ env.CONTENT_VERSION }}" | head -n1)
+          echo "$TARGET_VERSION"
+          echo "-s -w -X main.Version=${TARGET_VERSION} -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')"
+          go build -v -o ../build-tmp/${{ env.CONTENT_TARGET }} -trimpath -ldflags "-s -w -X main.Version=${TARGET_VERSION} -X main.BuildTime=$(date -u '+%Y-%m-%d-%H%M UTC')" ./cmd/${{ env.CONTENT_TARGET }}
 
       - name: Generate zip for Windows
         if: matrix.config.goos == 'windows'
