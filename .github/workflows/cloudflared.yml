@@ -69,7 +69,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
-      - name: Build - ${{ env.CONTENT_TARGET }}
+      - name: Build - ${{ env.CONTENT_TARGET }} for Windows
         if: matrix.config.goos == 'windows'
         env:
           GOOS: ${{ matrix.config.goos }}
@@ -78,17 +78,17 @@ jobs:
           CGO_ENABLED: 0
           GO111MODULE: on
         run: |
-          go env
+          TARGET_VERSION=$(cat "${{ env.CONTENT_VERSION }}" | head -n1)
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          make cloudflared
+          VERSION=$TARGET_VERSION make cloudflared
           ls -al
           mv -f ${{ env.CONTENT_TARGET }}.exe ${{ env.CONTENT_TARGET }}
           cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
-          go env
+          # go env
 
-      - name: Build - ${{ env.CONTENT_TARGET }}
+      - name: Build - ${{ env.CONTENT_TARGET }} for other platform
         if: matrix.config.goos != 'windows'
         env:
           GOOS: ${{ matrix.config.goos }}
@@ -97,14 +97,13 @@ jobs:
           CGO_ENABLED: 0
           GO111MODULE: on
         run: |
-          go env
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
           make cloudflared
           ls -al
           cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
-          go env
+          # go env
 
       - name: Generate zip for Windows
         if: matrix.config.goos == 'windows'
