@@ -70,20 +70,40 @@ jobs:
           check-latest: true
 
       - name: Build - ${{ env.CONTENT_TARGET }}
+        if: matrix.config.goos == 'windows'
         env:
           GOOS: ${{ matrix.config.goos }}
           GOARCH: ${{ matrix.config.goarch }}
           GOARM: ${{ matrix.config.goarm }}
           CGO_ENABLED: 0
+          GO111MODULE: on
         run: |
           go env
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          GO111MODULE=on
           make cloudflared
           ls -al
-          cp -fr cloudflared ../build-tmp/${{ env.CONTENT_TARGET }}
+          mv -f ${{ env.CONTENT_TARGET }}.exe ${{ env.CONTENT_TARGET }}
+          cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
+          go env
+
+      - name: Build - ${{ env.CONTENT_TARGET }}
+        if: matrix.config.goos != 'windows'
+        env:
+          GOOS: ${{ matrix.config.goos }}
+          GOARCH: ${{ matrix.config.goarch }}
+          GOARM: ${{ matrix.config.goarm }}
+          CGO_ENABLED: 0
+          GO111MODULE: on
+        run: |
+          go env
+          mkdir -p build-tmp; install -d build-tmp
+          cd ./${{ env.CONTENT_TARGET }}
+          # https://github.com/cloudflare/cloudflared/blob/master/Makefile
+          make cloudflared
+          ls -al
+          cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
           go env
 
       - name: Generate zip for Windows
