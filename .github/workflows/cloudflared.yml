@@ -76,12 +76,14 @@ jobs:
           GOARM: ${{ matrix.config.goarm }}
           CGO_ENABLED: 0
         run: |
+          go env
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
           make
           # make cloudflared
           ls -al
+          go env
 
       - name: Generate zip for Windows
         if: matrix.config.goos == 'windows'
