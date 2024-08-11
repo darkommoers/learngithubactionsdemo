@@ -53,7 +53,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-          # CONTENT_PATH: ${{ env.CONTENT_VERSION }}
+          CONTENT_PATH: ${{ env.CONTENT_VERSION }}
           GOOS: ${{ matrix.config.goos }}
           GOARCH: ${{ matrix.config.goarch }}
           GOARM: ${{ matrix.config.goarm }}
@@ -62,6 +62,9 @@ jobs:
           echo "GO_VERSION: $(curl -sL https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | jq -r '.[0].version')"
           echo "ASSET_NAME=$GOOS-$GOARCH$GOARM" >> $GITHUB_ENV
           echo "ASSET_NAME: $GOOS-$GOARCH$GOARM"
+          # echo "TARGET_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
+          echo "TARGET_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+          echo "$TARGET_VERSION"
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -78,11 +81,11 @@ jobs:
           CGO_ENABLED: 0
           GO111MODULE: on
         run: |
-          TARGET_VERSION=$(cat "${{ env.CONTENT_VERSION }}" | head -n1)
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          VERSION=$TARGET_VERSION make cloudflared
+          # make cloudflared
+          make VERSION=${{ env.TARGET_VERSION }} cloudflared
           ls -al
           mv -f ${{ env.CONTENT_TARGET }}.exe ${{ env.CONTENT_TARGET }}
           cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
@@ -100,7 +103,8 @@ jobs:
           mkdir -p build-tmp; install -d build-tmp
           cd ./${{ env.CONTENT_TARGET }}
           # https://github.com/cloudflare/cloudflared/blob/master/Makefile
-          make cloudflared
+          # make cloudflared
+          make VERSION=${{ env.TARGET_VERSION }} cloudflared
           ls -al
           cp -fr ${{ env.CONTENT_TARGET }} ../build-tmp/${{ env.CONTENT_TARGET }}
           # go env
@@ -160,6 +164,7 @@ jobs:
         run: |
           # echo "TARGET_VERSION=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -X GET https://api.github.com/repos/${{ github.repository }}/contents/${{ env.CONTENT_PATH }} | jq -r .content | head -1 | base64 -d)" >> $GITHUB_ENV
           echo "TARGET_VERSION=$(cat "${{ env.CONTENT_PATH }}" | head -n1)" >> $GITHUB_ENV
+          echo "$TARGET_VERSION"
 
       - run: mkdir -p path/to/artifact; install -d path/to/artifact
       - run: mkdir -p path/to/ready; install -d path/to/ready
