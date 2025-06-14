@@ -1,8 +1,8 @@
 name: AutoCheck
 
 on:
-  schedule:
-    - cron: "4 4,16 * * *"
+  # schedule:
+  #   - cron: "4 4,16 * * *"
   workflow_dispatch:
 
 jobs:
